@@ -4,72 +4,124 @@ import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-import { ArrowUpIcon, SpinnerIcon, TerminalIcon, TrashIcon } from '@/lib/icons'
+import {
+  addToHistory,
+  createTerminalEntry,
+  formatCommandTimestamp,
+  isClearCommand,
+  navigateHistory,
+  validateCommand,
+  type TerminalCommandEntry,
+} from '@/lib/terminal-command'
+import {
+  ArrowUpIcon,
+  CheckCircleIcon,
+  CrossCircleIcon,
+  PauseIcon,
+  SpinnerIcon,
+  TerminalIcon,
+  TrashIcon,
+  RewindIcon,
+} from '@/lib/icons'
 
-type LogEntry = {
-  id: string
-  level: 'info' | 'success' | 'error'
-  text: string
-  timestamp: string
+type SandboxConsoleProps = {
+  chatId: string
+  isReadOnly?: boolean
 }
 
-export function SandboxConsole({ chatId }: { chatId: string }) {
+export function SandboxConsole({ chatId, isReadOnly = false }: SandboxConsoleProps) {
   const [command, setCommand] = useState('')
   const [isRunning, setIsRunning] = useState(false)
   const [activeTab, setActiveTab] = useState<'terminal' | 'logs'>('terminal')
   const [history, setHistory] = useState<string[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
-  const [logs, setLogs] = useState<LogEntry[]>([
-    { id: 'boot', level: 'success', text: 'Sandbox ready', timestamp: 'now' },
-    { id: 'preview', level: 'info', text: 'Preview channel connected', timestamp: 'now' },
-  ])
+  const [entries, setEntries] = useState<TerminalCommandEntry[]>([])
 
-  const visibleLogs = useMemo(() => [...logs].reverse(), [logs])
+  const visibleEntries = useMemo(() => [...entries].reverse(), [entries])
 
-  async function runCommand() {
-    const nextCommand = command.trim()
-    if (!nextCommand || isRunning) return
-
-    setIsRunning(true)
-    setHistory((current) =>
-      [nextCommand, ...current.filter((entry) => entry !== nextCommand)].slice(0, 20),
+  function logOutput(output: string, status: TerminalCommandEntry['status']) {
+    setEntries((current) =>
+      current.map((entry, i) => (i === current.length - 1 ? { ...entry, output, status } : entry)),
     )
+  }
+
+  async function runCommand(next = command) {
+    const validation = validateCommand(next)
+    if (!validation.ok || isRunning) return
+
+    if (isClearCommand(next)) {
+      setEntries([])
+      setCommand('')
+      setHistoryIndex(-1)
+      return
+    }
+
+    setHistory((current) => addToHistory(current, next))
     setHistoryIndex(-1)
-    setLogs((current) => [
-      ...current,
-      { id: crypto.randomUUID(), level: 'info', text: `$ ${nextCommand}`, timestamp: 'now' },
-    ])
+    setEntries((current) => [...current, createTerminalEntry(next)])
+    setIsRunning(true)
+    setCommand('')
 
     try {
       const response = await fetch(`/api/chats/${encodeURIComponent(chatId)}/sandbox/command`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ command: nextCommand }),
+        body: JSON.stringify({ command: next }),
       })
       const result = (await response.json()) as { output?: string; message?: string; ok?: boolean }
-      setLogs((current) => [
-        ...current,
-        {
-          id: crypto.randomUUID(),
-          level: response.ok && result.ok !== false ? 'success' : 'error',
-          text: result.output ?? result.message ?? 'No output',
-          timestamp: 'now',
-        },
-      ])
+      const ok = response.ok && result.ok !== false
+      logOutput(result.output ?? result.message ?? 'No output', ok ? 'success' : 'error')
     } catch {
-      setLogs((current) => [
-        ...current,
-        {
-          id: crypto.randomUUID(),
-          level: 'error',
-          text: 'Unable to reach the sandbox.',
-          timestamp: 'now',
-        },
-      ])
-    } finally {
-      setCommand('')
-      setIsRunning(false)
+      logOutput('Unable to reach the sandbox.', 'error')
     }
+  }
+
+  function rerun(entry: TerminalCommandEntry) {
+    if (!isReadOnly) void runCommand(entry.command)
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === 'ArrowUp' && history.length > 0) {
+      event.preventDefault()
+      const { command: next, index } = navigateHistory(history, historyIndex, 'up')
+      setCommand(next)
+      setHistoryIndex(index)
+      return
+    }
+    if (event.key === 'ArrowDown' && historyIndex >= 0) {
+      event.preventDefault()
+      const { command: next, index } = navigateHistory(history, historyIndex, 'down')
+      setCommand(next)
+      setHistoryIndex(index)
+      return
+    }
+    if (
+      event.key === 'Enter' &&
+      !event.shiftKey &&
+      !event.nativeEvent.isComposing &&
+      event.keyCode !== 229
+    ) {
+      event.preventDefault()
+      void runCommand()
+    }
+  }
+
+  const statusClass = (status: TerminalCommandEntry['status']) =>
+    cn(
+      status === 'success' && 'text-success',
+      status === 'error' && 'text-destructive',
+      status === 'cancelled' && 'text-warning',
+      status === 'running' && 'text-muted-foreground animate-pulse',
+      status === 'pending' && 'text-muted-foreground',
+    )
+
+  const statusIcon = (status: TerminalCommandEntry['status']) => {
+    if (status === 'success') return <CheckCircleIcon className="size-3 shrink-0 text-success" />
+    if (status === 'error') return <CrossCircleIcon className="size-3 shrink-0 text-destructive" />
+    if (status === 'cancelled') return <PauseIcon className="size-3 shrink-0 text-warning" />
+    if (status === 'running' || status === 'pending')
+      return <SpinnerIcon className="size-3 shrink-0 animate-spin" />
+    return null
   }
 
   return (
@@ -78,16 +130,23 @@ export function SandboxConsole({ chatId }: { chatId: string }) {
         <div className="flex items-center gap-2 text-xs font-medium">
           <TerminalIcon className="size-3.5 text-muted-foreground" />
           Sandbox
-          <span className="size-1.5 rounded-full bg-emerald-500" aria-label="Connected" />
+          <span aria-label="Connected" className="size-1.5 rounded-full bg-success" />
         </div>
-        <Button
-          aria-label="Clear console"
-          onClick={() => setLogs([])}
-          size="icon-xs"
-          variant="ghost"
-        >
-          <TrashIcon className="size-3.5" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {isReadOnly ? (
+            <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+              Read-only
+            </span>
+          ) : null}
+          <Button
+            aria-label="Clear console"
+            onClick={() => setEntries([])}
+            size="icon-xs"
+            variant="ghost"
+          >
+            <TrashIcon className="size-3.5" />
+          </Button>
+        </div>
       </div>
       <div className="flex shrink-0 border-b border-border px-3">
         {(['terminal', 'logs'] as const).map((tab) => (
@@ -109,39 +168,45 @@ export function SandboxConsole({ chatId }: { chatId: string }) {
         ))}
       </div>
       <div className="min-h-0 flex-1 overflow-auto p-4 font-mono text-xs">
-        {activeTab === 'logs' && visibleLogs.length === 0 ? (
+        {activeTab === 'logs' && visibleEntries.length === 0 ? (
           <p className="text-muted-foreground">No sandbox activity yet.</p>
         ) : activeTab === 'logs' ? (
           <div className="flex flex-col gap-2">
-            {visibleLogs.map((entry) => (
-              <div className="flex gap-3" key={entry.id}>
-                <span className="shrink-0 text-muted-foreground">{entry.timestamp}</span>
-                <span
-                  className={cn(
-                    entry.level === 'error' && 'text-destructive',
-                    entry.level === 'success' && 'text-emerald-500',
-                  )}
-                >
-                  {entry.text}
-                </span>
+            {visibleEntries.map((entry) => (
+              <div data-status={entry.status} key={entry.timestamp} role="log">
+                <div className="flex gap-3">
+                  <span className="shrink-0 text-muted-foreground">
+                    {formatCommandTimestamp(entry.timestamp)}
+                  </span>
+                  <span className={statusClass(entry.status)}>
+                    <span className="font-semibold">$ {entry.command}</span>
+                  </span>
+                  {entry.status !== 'pending' ? (
+                    <RerunButton disabled={isReadOnly} onRun={() => rerun(entry)} />
+                  ) : null}
+                </div>
+                {entry.output ? (
+                  <div className="mt-1 pl-[3.5rem] text-muted-foreground">{entry.output}</div>
+                ) : null}
               </div>
             ))}
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            {visibleLogs
-              .filter((entry) => entry.text.startsWith('$ ') || entry.level !== 'info')
+            {visibleEntries
+              .filter((entry) => entry.output !== null || entry.status === 'success')
               .map((entry) => (
-                <div className="flex gap-3" key={entry.id}>
-                  <span className="shrink-0 text-muted-foreground">{entry.timestamp}</span>
-                  <span
-                    className={cn(
-                      entry.level === 'error' && 'text-destructive',
-                      entry.level === 'success' && 'text-emerald-500',
-                    )}
-                  >
-                    {entry.text}
+                <div className="flex gap-3" data-status={entry.status} key={entry.timestamp}>
+                  <span className="shrink-0 text-muted-foreground">
+                    {formatCommandTimestamp(entry.timestamp)}
                   </span>
+                  <span className={cn('flex items-center gap-1', statusClass(entry.status))}>
+                    {statusIcon(entry.status)}
+                    <span className="whitespace-pre">{entry.output ?? entry.command}</span>
+                  </span>
+                  {entry.status === 'error' ? (
+                    <RerunButton disabled={isReadOnly} onRun={() => rerun(entry)} />
+                  ) : null}
                 </div>
               ))}
           </div>
@@ -153,38 +218,15 @@ export function SandboxConsole({ chatId }: { chatId: string }) {
             <Textarea
               aria-label="Sandbox command"
               className="min-h-8 resize-none border-0 bg-transparent p-1 font-mono text-xs shadow-none focus-visible:ring-0"
+              disabled={isReadOnly}
               onChange={(event) => setCommand(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'ArrowUp' && history.length > 0) {
-                  event.preventDefault()
-                  const nextIndex = Math.min(historyIndex + 1, history.length - 1)
-                  setHistoryIndex(nextIndex)
-                  setCommand(history[nextIndex] ?? '')
-                  return
-                }
-                if (event.key === 'ArrowDown' && historyIndex >= 0) {
-                  event.preventDefault()
-                  const nextIndex = historyIndex - 1
-                  setHistoryIndex(nextIndex)
-                  setCommand(nextIndex >= 0 ? (history[nextIndex] ?? '') : '')
-                  return
-                }
-                if (
-                  event.key === 'Enter' &&
-                  !event.shiftKey &&
-                  !event.nativeEvent.isComposing &&
-                  event.keyCode !== 229
-                ) {
-                  event.preventDefault()
-                  void runCommand()
-                }
-              }}
+              onKeyDown={handleKeyDown}
               placeholder="Run a command in the sandbox..."
               value={command}
             />
             <Button
               aria-label="Run command"
-              disabled={!command.trim() || isRunning}
+              disabled={!command.trim() || isRunning || isReadOnly}
               onClick={() => void runCommand()}
               size="icon-sm"
             >
@@ -197,6 +239,22 @@ export function SandboxConsole({ chatId }: { chatId: string }) {
         </div>
       )}
     </section>
+  )
+}
+
+function RerunButton({ onRun, disabled }: { onRun: () => void; disabled: boolean }) {
+  return (
+    <Button
+      aria-label="Re-run command"
+      className="h-4 px-1 text-muted-foreground hover:text-foreground"
+      disabled={disabled}
+      onClick={onRun}
+      size="icon-xs"
+      variant="ghost"
+      title="Re-run"
+    >
+      <RewindIcon className="size-2.5" />
+    </Button>
   )
 }
 

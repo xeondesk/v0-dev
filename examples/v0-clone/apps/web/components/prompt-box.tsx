@@ -58,7 +58,10 @@ export function PromptBox({
   const [voiceError, setVoiceError] = useState<string | null>(null)
   const [isListening, setIsListening] = useState(false)
   const recognitionRef = useRef<{ start: () => void; stop: () => void } | null>(null)
-  const figmaUrl = useMemo(() => draft.match(/https?:\/\/(?:www\.)?figma\.com\/[^\s]+/i)?.[0], [draft])
+  const figmaUrl = useMemo(
+    () => draft.match(/https?:\/\/(?:www\.)?figma\.com\/[^\s]+/i)?.[0],
+    [draft],
+  )
 
   const handleSubmit = (message: PromptInputMessage) => {
     const text = message.text.trim()
@@ -75,8 +78,14 @@ export function PromptBox({
       setIsListening(false)
       return
     }
-    const SpeechRecognition = (window as Window & { SpeechRecognition?: new () => any; webkitSpeechRecognition?: new () => any }).SpeechRecognition
-      ?? (window as Window & { webkitSpeechRecognition?: new () => any }).webkitSpeechRecognition
+    const SpeechRecognition =
+      (
+        window as Window & {
+          SpeechRecognition?: new () => any
+          webkitSpeechRecognition?: new () => any
+        }
+      ).SpeechRecognition ??
+      (window as Window & { webkitSpeechRecognition?: new () => any }).webkitSpeechRecognition
     if (!SpeechRecognition) {
       setVoiceError('Voice input is not supported in this browser.')
       return
@@ -84,7 +93,8 @@ export function PromptBox({
     const recognition = new SpeechRecognition()
     recognition.continuous = false
     recognition.interimResults = false
-    recognition.onresult = (event: any) => setDraft((current) => `${current}${current ? ' ' : ''}${event.results[0][0].transcript}`)
+    recognition.onresult = (event: any) =>
+      setDraft((current) => `${current}${current ? ' ' : ''}${event.results[0][0].transcript}`)
     recognition.onerror = () => setVoiceError('Microphone access was unavailable.')
     recognition.onend = () => setIsListening(false)
     recognitionRef.current = recognition
@@ -121,7 +131,8 @@ export function PromptBox({
       </PromptInputBody>
       {figmaUrl ? (
         <p className="px-4 pb-1 text-xs text-muted-foreground">
-          Figma link detected. Import requires a connected Figma integration; the URL will be included in your prompt.
+          Figma link detected. Import requires a connected Figma integration; the URL will be
+          included in your prompt.
         </p>
       ) : null}
       {voiceError ? <p className="px-4 pb-1 text-xs text-destructive">{voiceError}</p> : null}
@@ -135,7 +146,9 @@ export function PromptBox({
                 </PromptInputButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                <PromptInputActionAddAttachments>Upload screenshots or files</PromptInputActionAddAttachments>
+                <PromptInputActionAddAttachments>
+                  Upload screenshots or files
+                </PromptInputActionAddAttachments>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -145,7 +158,12 @@ export function PromptBox({
             onClick={toggleVoice}
             type="button"
           >
-            <span aria-hidden="true" className={cn('text-xs font-semibold', isListening && 'text-destructive')}>Aa</span>
+            <span
+              aria-hidden="true"
+              className={cn('text-xs font-semibold', isListening && 'text-destructive')}
+            >
+              Aa
+            </span>
           </PromptInputButton>
 
           <DropdownMenu>

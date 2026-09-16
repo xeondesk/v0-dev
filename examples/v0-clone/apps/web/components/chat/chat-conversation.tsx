@@ -21,11 +21,13 @@ export function ChatConversation({
   chatId,
   messages: initialMessages,
   onContentChange,
+  refreshKey,
   vercelProjectId,
 }: {
   chatId: string
   messages: Message[]
   onContentChange: () => void
+  refreshKey?: number
   vercelProjectId?: string
 }) {
   const { settings, updateSettings } = useSettings()
@@ -104,6 +106,13 @@ export function ChatConversation({
 
     setMessages(toV0UIMessages(persistedMessages))
   }, [chatIsBusy, isResolving, persistedMessages, setMessages])
+
+  useEffect(() => {
+    if (chatIsBusy || isResolving) return
+
+    void messagesQuery.mutate().catch(() => undefined)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey])
 
   const refreshMessages = async () => {
     if (!(await messagesQuery.mutate())) {

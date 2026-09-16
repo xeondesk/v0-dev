@@ -164,4 +164,19 @@ The Code view supports chat-scoped file selection, unsaved-change indicators, Re
 
 The Sandbox console provides separate Terminal and Logs views, command history with ArrowUp/ArrowDown, Enter-to-run behavior that respects IME composition, and bounded server-side command validation. It is an observability surface for the chat sandbox, not an unrestricted host shell.
 
+## Preview, Design, and Versions
+
+The workspace header switches between Preview, Design, Code, Console, and Versions views. On mobile the conversation stays visible in Preview and the header provides a compact view switcher.
+
+- **Design** mode places an inspection panel beside the live preview. It offers layer metadata and property controls (typography, color, layout, border, appearance) for a small starter page model, with undo/redo, an optional instruction, and an explicit **Apply**. Apply serializes the pending edits and sends them to the chat messages route as a new linear message, so design iterations stay explicit and reversible in the conversation's history. On narrow screens Design mode shows an unavailable notice instead.
+- A read-only **Design System** strip below Design mode shows the local starter token set (tokens, source, provider, and connection state). It is informational and local — no external lookups.
+- **Versions** lists the chat's assistant messages as a linear history. Each version shows its timestamp, finish state, and change summary, and can be **Restored**, which calls the existing restore route to create a new latest iteration from the selected version. A simple line-by-line diff view compares any two versions.
+- The **Media** strip under Preview renders message attachments (images, video, or generic files) with type detection, size, thumbnail/playback, and download. A client-side validator mirrors the route boundary's MIME and 10 MB limits, and the messages route rejects invalid attachment payloads.
+
+Iteration state flows through the workspace: applying a design edit or restoring a version bumps an internal revision that refreshes the persisted message list and the live preview.
+
 There is no local demo data store; chats and files come from the v0 API.
+
+## Tests
+
+The web app's pure logic is covered with `bun test` (`bun --filter v0-clone web test` or `cd apps/web && bun test`). Tests cover the terminal command validator/history, media file validation, editor change tracking and path validation, the line diff, design-change serialization round-trips, and design-system metadata.
