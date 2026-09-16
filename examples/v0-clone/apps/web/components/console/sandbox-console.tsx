@@ -31,7 +31,9 @@ export function SandboxConsole({ chatId }: { chatId: string }) {
     if (!nextCommand || isRunning) return
 
     setIsRunning(true)
-    setHistory((current) => [nextCommand, ...current.filter((entry) => entry !== nextCommand)].slice(0, 20))
+    setHistory((current) =>
+      [nextCommand, ...current.filter((entry) => entry !== nextCommand)].slice(0, 20),
+    )
     setHistoryIndex(-1)
     setLogs((current) => [
       ...current,
@@ -57,7 +59,12 @@ export function SandboxConsole({ chatId }: { chatId: string }) {
     } catch {
       setLogs((current) => [
         ...current,
-        { id: crypto.randomUUID(), level: 'error', text: 'Unable to reach the sandbox.', timestamp: 'now' },
+        {
+          id: crypto.randomUUID(),
+          level: 'error',
+          text: 'Unable to reach the sandbox.',
+          timestamp: 'now',
+        },
       ])
     } finally {
       setCommand('')
@@ -73,7 +80,12 @@ export function SandboxConsole({ chatId }: { chatId: string }) {
           Sandbox
           <span className="size-1.5 rounded-full bg-emerald-500" aria-label="Connected" />
         </div>
-        <Button aria-label="Clear console" onClick={() => setLogs([])} size="icon-xs" variant="ghost">
+        <Button
+          aria-label="Clear console"
+          onClick={() => setLogs([])}
+          size="icon-xs"
+          variant="ghost"
+        >
           <TrashIcon className="size-3.5" />
         </Button>
       </div>
@@ -83,7 +95,9 @@ export function SandboxConsole({ chatId }: { chatId: string }) {
             aria-selected={activeTab === tab}
             className={cn(
               'border-b-2 px-3 py-2 text-xs capitalize',
-              activeTab === tab ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground',
+              activeTab === tab
+                ? 'border-foreground text-foreground'
+                : 'border-transparent text-muted-foreground',
             )}
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -102,7 +116,12 @@ export function SandboxConsole({ chatId }: { chatId: string }) {
             {visibleLogs.map((entry) => (
               <div className="flex gap-3" key={entry.id}>
                 <span className="shrink-0 text-muted-foreground">{entry.timestamp}</span>
-                <span className={cn(entry.level === 'error' && 'text-destructive', entry.level === 'success' && 'text-emerald-500')}>
+                <span
+                  className={cn(
+                    entry.level === 'error' && 'text-destructive',
+                    entry.level === 'success' && 'text-emerald-500',
+                  )}
+                >
                   {entry.text}
                 </span>
               </div>
@@ -110,14 +129,21 @@ export function SandboxConsole({ chatId }: { chatId: string }) {
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            {visibleLogs.filter((entry) => entry.text.startsWith('$ ') || entry.level !== 'info').map((entry) => (
-              <div className="flex gap-3" key={entry.id}>
-                <span className="shrink-0 text-muted-foreground">{entry.timestamp}</span>
-                <span className={cn(entry.level === 'error' && 'text-destructive', entry.level === 'success' && 'text-emerald-500')}>
-                  {entry.text}
-                </span>
-              </div>
-            ))}
+            {visibleLogs
+              .filter((entry) => entry.text.startsWith('$ ') || entry.level !== 'info')
+              .map((entry) => (
+                <div className="flex gap-3" key={entry.id}>
+                  <span className="shrink-0 text-muted-foreground">{entry.timestamp}</span>
+                  <span
+                    className={cn(
+                      entry.level === 'error' && 'text-destructive',
+                      entry.level === 'success' && 'text-emerald-500',
+                    )}
+                  >
+                    {entry.text}
+                  </span>
+                </div>
+              ))}
           </div>
         )}
       </div>
@@ -140,10 +166,15 @@ export function SandboxConsole({ chatId }: { chatId: string }) {
                   event.preventDefault()
                   const nextIndex = historyIndex - 1
                   setHistoryIndex(nextIndex)
-                  setCommand(nextIndex >= 0 ? history[nextIndex] ?? '' : '')
+                  setCommand(nextIndex >= 0 ? (history[nextIndex] ?? '') : '')
                   return
                 }
-                if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) {
+                if (
+                  event.key === 'Enter' &&
+                  !event.shiftKey &&
+                  !event.nativeEvent.isComposing &&
+                  event.keyCode !== 229
+                ) {
                   event.preventDefault()
                   void runCommand()
                 }
@@ -151,11 +182,18 @@ export function SandboxConsole({ chatId }: { chatId: string }) {
               placeholder="Run a command in the sandbox..."
               value={command}
             />
-            <Button aria-label="Run command" disabled={!command.trim() || isRunning} onClick={() => void runCommand()} size="icon-sm">
+            <Button
+              aria-label="Run command"
+              disabled={!command.trim() || isRunning}
+              onClick={() => void runCommand()}
+              size="icon-sm"
+            >
               {isRunning ? <SpinnerIcon className="animate-spin" /> : <ArrowUpIcon />}
             </Button>
           </div>
-          <p className="mt-2 text-[11px] text-muted-foreground">Commands run in the chat-scoped sandbox.</p>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Commands run in the chat-scoped sandbox.
+          </p>
         </div>
       )}
     </section>
@@ -163,5 +201,9 @@ export function SandboxConsole({ chatId }: { chatId: string }) {
 }
 
 export function ConsoleLoading() {
-  return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading sandbox...</div>
+  return (
+    <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+      Loading sandbox...
+    </div>
+  )
 }
