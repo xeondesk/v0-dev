@@ -339,8 +339,8 @@ function mergeObjectSchemas(left: OpenApiSchema, right: OpenApiSchema | undefine
     ...left,
     ...right,
     properties: {
-      ...(left.properties ?? {}),
-      ...(right.properties ?? {}),
+      ...left.properties,
+      ...right.properties,
     },
     required: [...(left.required ?? []), ...(right.required ?? [])],
   }

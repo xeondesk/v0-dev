@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { WebPreviewNavigationButton } from '@/components/ai-elements/web-preview'
 import { SidebarToggleButton } from '@/components/layout/app-shell'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,21 +27,37 @@ import {
   SettingsIcon,
   SpinnerIcon,
   VercelLogoIcon,
+  PreviewIcon,
+  InspectIcon,
+  LayersIcon,
+  GitBranchIcon,
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
-export type ChatView = 'preview' | 'code' | 'console'
+export type ChatView = 'preview' | 'design' | 'code' | 'console' | 'versions'
+
+export const CHAT_VIEWS: ReadonlyArray<{ id: ChatView; label: string; icon: typeof EyeIcon }> = [
+  { id: 'preview', label: 'Preview', icon: PreviewIcon },
+  { id: 'design', label: 'Design', icon: InspectIcon },
+  { id: 'code', label: 'Code', icon: CodeIcon },
+  { id: 'console', label: 'Console', icon: TerminalIcon },
+  { id: 'versions', label: 'Versions', icon: GitBranchIcon },
+]
 
 export function ChatHeader({
   chatId,
   title,
   view,
   onViewChange,
+  isReadOnly = false,
+  isLatest = true,
 }: {
   chatId: string
   title: string
   view: ChatView
   onViewChange: (view: ChatView) => void
+  isReadOnly?: boolean
+  isLatest?: boolean
 }) {
   const router = useRouter()
   const deployChat = useDeployChat(`/api/chats/${encodeURIComponent(chatId)}/deploy`)
@@ -51,6 +69,8 @@ export function ChatHeader({
   const isPublishing = deployChat.isMutating
   const isDuplicating = duplicateChat.isMutating
   const isDownloading = downloadChat.isMutating
+
+  const isDesign = view === 'design'
 
   const publish = async () => {
     setError(null)
@@ -100,44 +120,37 @@ export function ChatHeader({
   }
 
   return (
-    <header className="flex h-12 shrink-0 items-center border-b border-border">
-      <div className="flex w-full shrink-0 items-center gap-2 px-3 md:w-80 md:max-w-[42%]">
+    <header className="flex shrink-0 flex-col border-b border-border md:h-12 md:flex-row">
+      <div className="flex h-12 shrink-0 items-center gap-2 px-3 md:w-80 md:max-w-[42%]">
         <SidebarToggleButton />
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{title}</span>
+        {isLatest ? (
+          <Badge aria-label="Latest version" className="shrink-0" variant="outline">
+            Latest
+          </Badge>
+        ) : null}
+        {isReadOnly ? (
+          <Badge aria-label="Read-only chat" className="shrink-0" variant="outline">
+            Read-only
+          </Badge>
+        ) : null}
       </div>
 
       <div className="hidden h-full min-w-0 flex-1 items-center justify-between gap-3 px-3 md:flex">
-        <div className="flex shrink-0 items-center rounded-md bg-muted p-0.5">
-          <Button
-            aria-label="Preview"
-            aria-pressed={view === 'preview'}
-            className={cn('size-6 rounded-sm p-0', view === 'preview' && 'bg-background shadow-xs')}
-            onClick={() => onViewChange('preview')}
-            size="icon-xs"
-            variant="ghost"
-          >
-            <EyeIcon className="size-3.5" />
-          </Button>
-          <Button
-            aria-label="Code"
-            aria-pressed={view === 'code'}
-            className={cn('size-6 rounded-sm p-0', view === 'code' && 'bg-background shadow-xs')}
-            onClick={() => onViewChange('code')}
-            size="icon-xs"
-            variant="ghost"
-          >
-            <CodeIcon className="size-3.5" />
-          </Button>
-          <Button
-            aria-label="Sandbox console"
-            aria-pressed={view === 'console'}
-            className={cn('size-6 rounded-sm p-0', view === 'console' && 'bg-background shadow-xs')}
-            onClick={() => onViewChange('console')}
-            size="icon-xs"
-            variant="ghost"
-          >
-            <TerminalIcon className="size-3.5" />
-          </Button>
+        <div className="flex shrink-0 items-center rounded-md bg-muted p-0.5" role="toolbar">
+          {CHAT_VIEWS.map(({ id, label, icon: Icon }) => (
+            <Button
+              aria-label={label}
+              aria-pressed={view === id}
+              key={id}
+              className={cn('size-6 rounded-sm p-0', view === id && 'bg-background shadow-xs')}
+              onClick={() => onViewChange(id)}
+              size="icon-xs"
+              variant="ghost"
+            >
+              <Icon className="size-3.5" />
+            </Button>
+          ))}
         </div>
 
         <div className="hidden h-7 min-w-[150px] max-w-[420px] flex-1 items-center rounded-md border border-border px-0.5 lg:flex">
@@ -237,6 +250,39 @@ export function ChatHeader({
             </Button>
           )}
         </div>
+      </div>
+
+      <div className="flex h-10 shrink-0 items-center justify-between gap-2 border-t border-border px-2 md:hidden">
+        <div className="flex min-w-0 items-center gap-0.5 overflow-x-auto">
+          {CHAT_VIEWS.map(({ id, label, icon: Icon }) => (
+            <Button
+              aria-label={`${label} view`}
+              aria-pressed={view === id}
+              className={cn(
+                'h-6 gap-1 rounded-sm px-1.5 text-[11px]',
+                view === id && 'bg-background shadow-xs',
+                id === 'design' && 'hidden sm:inline-flex',
+              )}
+              key={id}
+              onClick={() => onViewChange(id)}
+              size="xs"
+              variant="ghost"
+            >
+              <Icon className="size-3" />
+              <span className="min-w-0 truncate">{label}</span>
+            </Button>
+          ))}
+        </div>
+        <Button
+          aria-label="Publish chat"
+          className="h-6 shrink-0 gap-1 rounded-sm px-2 text-[11px]"
+          disabled={isPublishing}
+          onClick={publish}
+          size="xs"
+        >
+          {isPublishing ? <SpinnerIcon className="size-3 animate-spin" /> : null}
+          {isPublishing ? 'Publishing' : 'Publish'}
+        </Button>
       </div>
     </header>
   )
