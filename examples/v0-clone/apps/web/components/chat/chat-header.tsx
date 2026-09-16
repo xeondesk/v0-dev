@@ -17,6 +17,7 @@ import {
   ChevronRightIcon,
   CodeIcon,
   CopyIcon,
+  TerminalIcon,
   DownloadIcon,
   ExternalIcon,
   EyeIcon,
@@ -27,7 +28,7 @@ import {
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
-export type ChatView = 'preview' | 'code'
+export type ChatView = 'preview' | 'code' | 'console'
 
 export function ChatHeader({
   chatId,
@@ -126,6 +127,16 @@ export function ChatHeader({
             variant="ghost"
           >
             <CodeIcon className="size-3.5" />
+          </Button>
+          <Button
+            aria-label="Sandbox console"
+            aria-pressed={view === 'console'}
+            className={cn('size-6 rounded-sm p-0', view === 'console' && 'bg-background shadow-xs')}
+            onClick={() => onViewChange('console')}
+            size="icon-xs"
+            variant="ghost"
+          >
+            <TerminalIcon className="size-3.5" />
           </Button>
         </div>
 

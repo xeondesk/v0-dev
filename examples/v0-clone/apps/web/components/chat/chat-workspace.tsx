@@ -9,6 +9,7 @@ import {
 } from '@/components/chat/code-editor'
 import { ChatHeader, type ChatView } from '@/components/chat/chat-header'
 import { ChatConversation } from '@/components/chat/chat-conversation'
+import { SandboxConsole } from '@/components/console/sandbox-console'
 import { PreviewPane } from '@/components/preview/preview-pane'
 
 export function ChatWorkspace({
@@ -59,6 +60,9 @@ export function ChatWorkspace({
                 key={contentRevision}
               />
             </Suspense>
+          </div>
+          <div className={view === 'console' ? 'h-full' : 'hidden'}>
+            <SandboxConsole chatId={chat.id} />
           </div>
         </div>
       </div>
