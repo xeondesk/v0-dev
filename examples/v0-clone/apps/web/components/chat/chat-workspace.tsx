@@ -62,7 +62,7 @@ export function ChatWorkspace({
             </Suspense>
           </div>
           <div className={view === 'console' ? 'h-full' : 'hidden'}>
-            <SandboxConsole chatId={chat.id} />
+            <SandboxConsole chatId={chat.id} key={contentRevision} />
           </div>
         </div>
       </div>

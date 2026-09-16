@@ -160,4 +160,8 @@ entries are preserved.
   `fetchPreview`, and its `proxy.ts` keeps root-relative preview requests on the
   chat-specific proxy path.
 
+The Code view supports chat-scoped file selection, unsaved-change indicators, Reset, Save, and Cmd/Ctrl+S. Saving is disabled until the preview is ready and updates only changed UTF-8 files through the v0 API.
+
+The Sandbox console provides separate Terminal and Logs views, command history with ArrowUp/ArrowDown, Enter-to-run behavior that respects IME composition, and bounded server-side command validation. It is an observability surface for the chat sandbox, not an unrestricted host shell.
+
 There is no local demo data store; chats and files come from the v0 API.

@@ -88,9 +88,15 @@ function CodeEditor({
       })
       setSavedFiles(files)
       setStatus('Saved')
+      setTimeout(() => setStatus(null), 2000)
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Failed to save files.')
     }
+  }
+
+  const reset = () => {
+    setFiles(savedFiles)
+    setStatus(null)
   }
 
   if (files.length === 0) {
@@ -103,22 +109,32 @@ function CodeEditor({
 
   return (
     <div className="flex h-full min-h-0 bg-background">
-      <aside className="w-52 shrink-0 overflow-y-auto border-r border-border p-2">
-        {files.map((file) => (
-          <button
-            className={cn(
-              'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-accent hover:text-foreground',
-              file.path === selectedPath && 'bg-accent text-foreground',
-            )}
-            key={file.path}
-            onClick={() => setSelectedPath(file.path)}
-            title={file.path}
-            type="button"
-          >
-            <FileIcon className="size-3.5 shrink-0" />
-            <span className="truncate">{file.path}</span>
-          </button>
-        ))}
+      <aside className="flex w-52 shrink-0 flex-col border-r border-border">
+        <div className="flex items-center justify-between border-b border-border px-3 py-2">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Files</span>
+          <span className="text-[11px] text-muted-foreground">{files.length}</span>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-2">
+          {files.map((file) => {
+            const isChanged = changedFiles.some((changed) => changed.path === file.path)
+            return (
+              <button
+                className={cn(
+                  'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-accent hover:text-foreground',
+                  file.path === selectedPath && 'bg-accent text-foreground',
+                )}
+                key={file.path}
+                onClick={() => setSelectedPath(file.path)}
+                title={file.path}
+                type="button"
+              >
+                <FileIcon className="size-3.5 shrink-0" />
+                <span className="min-w-0 flex-1 truncate">{file.path}</span>
+                {isChanged ? <span aria-label="Unsaved changes" className="size-1.5 shrink-0 rounded-full bg-amber-500" /> : null}
+              </button>
+            )
+          })}
+        </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -136,11 +152,16 @@ function CodeEditor({
               {status}
             </span>
           ) : null}
+          {changedFiles.length > 0 ? (
+            <Button disabled={isSaving} onClick={reset} size="xs" variant="ghost">
+              Reset
+            </Button>
+          ) : null}
           <Button
             disabled={changedFiles.length === 0 || isSaving || !isPreviewReady}
             onClick={save}
             size="xs"
-            title={isPreviewReady ? undefined : 'Preview is still loading'}
+            title={isPreviewReady ? 'Save changes (⌘/Ctrl+S)' : 'Preview is still loading'}
           >
             {isSaving ? <SpinnerIcon className="size-3 animate-spin" /> : null}
             {isSaving ? 'Saving' : 'Save'}
@@ -153,6 +174,12 @@ function CodeEditor({
             className="min-h-0 flex-1 resize-none bg-background p-4 font-mono text-xs leading-5 text-foreground outline-none"
             disabled={isSaving}
             onChange={(event) => updateSelectedFile(event.target.value)}
+            onKeyDown={(event) => {
+              if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+                event.preventDefault()
+                void save()
+              }
+            }}
             spellCheck={false}
             value={selectedFile.content}
           />
