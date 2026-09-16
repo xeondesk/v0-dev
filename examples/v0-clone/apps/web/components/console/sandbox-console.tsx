@@ -17,6 +17,8 @@ export function SandboxConsole({ chatId }: { chatId: string }) {
   const [command, setCommand] = useState('')
   const [isRunning, setIsRunning] = useState(false)
   const [activeTab, setActiveTab] = useState<'terminal' | 'logs'>('terminal')
+  const [history, setHistory] = useState<string[]>([])
+  const [historyIndex, setHistoryIndex] = useState(-1)
   const [logs, setLogs] = useState<LogEntry[]>([
     { id: 'boot', level: 'success', text: 'Sandbox ready', timestamp: 'now' },
     { id: 'preview', level: 'info', text: 'Preview channel connected', timestamp: 'now' },
@@ -29,6 +31,8 @@ export function SandboxConsole({ chatId }: { chatId: string }) {
     if (!nextCommand || isRunning) return
 
     setIsRunning(true)
+    setHistory((current) => [nextCommand, ...current.filter((entry) => entry !== nextCommand)].slice(0, 20))
+    setHistoryIndex(-1)
     setLogs((current) => [
       ...current,
       { id: crypto.randomUUID(), level: 'info', text: `$ ${nextCommand}`, timestamp: 'now' },
@@ -91,11 +95,22 @@ export function SandboxConsole({ chatId }: { chatId: string }) {
         ))}
       </div>
       <div className="min-h-0 flex-1 overflow-auto p-4 font-mono text-xs">
-        {visibleLogs.length === 0 ? (
+        {activeTab === 'logs' && visibleLogs.length === 0 ? (
           <p className="text-muted-foreground">No sandbox activity yet.</p>
-        ) : (
+        ) : activeTab === 'logs' ? (
           <div className="flex flex-col gap-2">
             {visibleLogs.map((entry) => (
+              <div className="flex gap-3" key={entry.id}>
+                <span className="shrink-0 text-muted-foreground">{entry.timestamp}</span>
+                <span className={cn(entry.level === 'error' && 'text-destructive', entry.level === 'success' && 'text-emerald-500')}>
+                  {entry.text}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {visibleLogs.filter((entry) => entry.text.startsWith('$ ') || entry.level !== 'info').map((entry) => (
               <div className="flex gap-3" key={entry.id}>
                 <span className="shrink-0 text-muted-foreground">{entry.timestamp}</span>
                 <span className={cn(entry.level === 'error' && 'text-destructive', entry.level === 'success' && 'text-emerald-500')}>
@@ -114,6 +129,20 @@ export function SandboxConsole({ chatId }: { chatId: string }) {
               className="min-h-8 resize-none border-0 bg-transparent p-1 font-mono text-xs shadow-none focus-visible:ring-0"
               onChange={(event) => setCommand(event.target.value)}
               onKeyDown={(event) => {
+                if (event.key === 'ArrowUp' && history.length > 0) {
+                  event.preventDefault()
+                  const nextIndex = Math.min(historyIndex + 1, history.length - 1)
+                  setHistoryIndex(nextIndex)
+                  setCommand(history[nextIndex] ?? '')
+                  return
+                }
+                if (event.key === 'ArrowDown' && historyIndex >= 0) {
+                  event.preventDefault()
+                  const nextIndex = historyIndex - 1
+                  setHistoryIndex(nextIndex)
+                  setCommand(nextIndex >= 0 ? history[nextIndex] ?? '' : '')
+                  return
+                }
                 if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) {
                   event.preventDefault()
                   void runCommand()
