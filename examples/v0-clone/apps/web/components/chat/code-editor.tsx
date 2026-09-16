@@ -111,7 +111,9 @@ function CodeEditor({
     <div className="flex h-full min-h-0 bg-background">
       <aside className="flex w-52 shrink-0 flex-col border-r border-border">
         <div className="flex items-center justify-between border-b border-border px-3 py-2">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Files</span>
+          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Files
+          </span>
           <span className="text-[11px] text-muted-foreground">{files.length}</span>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
@@ -130,7 +132,12 @@ function CodeEditor({
               >
                 <FileIcon className="size-3.5 shrink-0" />
                 <span className="min-w-0 flex-1 truncate">{file.path}</span>
-                {isChanged ? <span aria-label="Unsaved changes" className="size-1.5 shrink-0 rounded-full bg-amber-500" /> : null}
+                {isChanged ? (
+                  <span
+                    aria-label="Unsaved changes"
+                    className="size-1.5 shrink-0 rounded-full bg-amber-500"
+                  />
+                ) : null}
               </button>
             )
           })}

@@ -50,7 +50,9 @@ export function PreviewPane({
         <div className="absolute inset-0 flex items-center justify-center bg-background/95 p-6 text-center">
           <div className="max-w-sm">
             <p className="text-sm font-medium">Preview unavailable</p>
-            <p className="mt-1 text-xs text-muted-foreground">The sandbox preview could not be reached. Open the console to inspect the session.</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              The sandbox preview could not be reached. Open the console to inspect the session.
+            </p>
           </div>
         </div>
       )}
