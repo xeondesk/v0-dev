@@ -67,6 +67,11 @@ export function CodeEditorArea({
   const [applying, setApplying] = useState(false)
 
   const selectedFile = workingFiles.find((f) => f.path === selectedPath)
+
+  useEffect(() => {
+    if (!selectedPath && workingFiles[0]) setSelectedPath(workingFiles[0].path)
+  }, [selectedPath, workingFiles])
+
   const changedList = useMemo(
     () => computeChangedFiles({ files: workingFiles, savedFiles }),
     [workingFiles, savedFiles],
@@ -128,9 +133,24 @@ export function CodeEditorArea({
   }
 
   const addFile = () => {
+    const path = window.prompt('New file path', 'app/page.tsx')?.trim()
+    if (!path) return
+    const pathError = validateFilePath(path)
+    if (pathError) {
+      setSaveStatus(pathError)
+      return
+    }
+    if (workingFiles.some((file) => file.path === path)) {
+      setSaveStatus(`A file named ${path} already exists.`)
+      return
+    }
+    setWorkingFiles((current) => [...current, { path, content: '', encoding: 'utf8' }])
+    setSelectedPath(path)
+  }
+
+  const importFile = () => {
     const target = document.createElement('input')
     target.type = 'file'
-    target.multiple = false
     target.onchange = async () => {
       const file = target.files?.[0]
       if (!file) return
@@ -140,13 +160,24 @@ export function CodeEditorArea({
         return
       }
       const text = await file.text()
-      setWorkingFiles((current) => [
-        ...current,
-        { path: file.name, content: text, encoding: 'utf8' },
-      ])
+      setWorkingFiles((current) => [...current, { path: file.name, content: text, encoding: 'utf8' }])
       setSelectedPath(file.name)
     }
     target.click()
+  }
+
+  const addFolder = () => {
+    const folder = window.prompt('New folder path', 'components')?.trim().replace(/\/+$/, '')
+    if (!folder) return
+    const pathError = validateFilePath(`${folder}/.gitkeep`)
+    if (pathError) {
+      setSaveStatus(pathError)
+      return
+    }
+    const path = `${folder}/.gitkeep`
+    if (workingFiles.some((file) => file.path === path)) return
+    setWorkingFiles((current) => [...current, { path, content: '', encoding: 'utf8' }])
+    setSelectedPath(path)
   }
 
   const removeFile = () => {
@@ -186,11 +217,22 @@ export function CodeEditorArea({
     <div className="flex h-full min-h-0 bg-editor-bg font-mono text-[13px] leading-5">
       {explorerOpen ? (
         <div className="flex w-56 shrink-0 flex-col border-r border-border bg-background">
-          <div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-3">
+          <div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-2">
             <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               Files
             </span>
-            <span className="text-[11px] text-muted-foreground">{workingFiles.length}</span>
+            <div className="flex items-center gap-0.5">
+              <Button aria-label="New file" className="size-6" onClick={addFile} size="icon-sm" title="New file" variant="ghost">
+                <PlusIcon className="size-3.5" />
+              </Button>
+              <Button aria-label="New folder" className="size-6" onClick={addFolder} size="icon-sm" title="New folder" variant="ghost">
+                <SidebarRightIcon className="size-3.5" />
+              </Button>
+              <Button aria-label="Import file" className="size-6" onClick={importFile} size="icon-sm" title="Import file" variant="ghost">
+                <DownloadIcon className="size-3.5" />
+              </Button>
+              <span className="ml-1 text-[11px] text-muted-foreground">{workingFiles.length}</span>
+            </div>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto py-1">
             {workingFiles.map((file) => (
@@ -402,14 +444,15 @@ export function CodeEditorArea({
         ) : null}
 
         <div className={cn('grid min-h-0 flex-1', splitOpen ? 'grid-cols-2' : 'grid-cols-1')}>
-          <EditorView
-            changed={changedList.filter((c) => c.path === selectedPath)[0]}
-            content={splitOpen ? selectedFile?.content : undefined}
-            language={language}
-            onChange={(content) => updateSelected(content)}
-            readOnly={isReadOnly}
-            value={selectedFile?.content ?? ''}
-          />
+            <EditorView
+              changed={changedList.filter((c) => c.path === selectedPath)[0]}
+              content={splitOpen ? selectedFile?.content : undefined}
+              language={language}
+              onChange={(content) => updateSelected(content)}
+              onSave={() => void save()}
+              readOnly={isReadOnly}
+              value={selectedFile?.content ?? ''}
+            />
           {splitOpen ? (
             <EditorView
               changed={changedList.filter((c) => c.path === selectedPath)[0]}
@@ -417,6 +460,7 @@ export function CodeEditorArea({
               diffMode
               language={language}
               onChange={() => {}}
+              onSave={() => {}}
               readOnly
               value={selectedFile?.content ?? ''}
             />
@@ -441,6 +485,7 @@ function EditorView({
   value,
   content,
   onChange,
+  onSave,
   readOnly,
   language,
   changed,
@@ -453,6 +498,7 @@ function EditorView({
   language: string
   changed?: EditorFileChange
   diffMode?: boolean
+  onSave: () => void
 }) {
   const lineNumbers = Array.from({ length: lineCount(value) }, (_, index) => index + 1)
   const ref = useRef<HTMLDivElement>(null)
@@ -495,7 +541,7 @@ function EditorView({
           }
           if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
             event.preventDefault()
-            onChange(value)
+            onSave()
           }
         }}
         placeholder="// select a file to edit"
