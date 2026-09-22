@@ -3,5 +3,5 @@
   "framework": "nextjs",
   "installCommand": "bun install --frozen-lockfile",
   "buildCommand": "bun --filter v0 build && bun --filter @v0-sdk/react build && bun --filter v0-clone build",
-  "outputDirectory": "examples/v0-clone/.next"
+  "outputDirectory": "examples/v0-clone/apps/web/.next"
 }
