@@ -3,5 +3,5 @@
   "framework": "nextjs",
   "installCommand": "bun install --frozen-lockfile",
   "buildCommand": "bun --filter v0 build && bun --filter @v0-sdk/react build && bun --filter react-chat build",
-  "outputDirectory": "examples/react-chat/.next"
+  "outputDirectory": "examples/v0-clone/.next"
 }
